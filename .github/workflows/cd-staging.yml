@@ -161,9 +161,5 @@ jobs:
         if: success()
         working-directory: infra/staging
         run: |
-          tofu destroy -auto-approve \
-            -var "subscription_id=${{ secrets.AZURE_SUBSCRIPTION_ID }}" \
-            -var "location=australiaeast" \
-            -var "project=sit722" \
-            -var "env=staging" \
-            -var "shared_acr_name=${{ secrets.SHARED_ACR_NAME }}"
+          echo "Deleting staging resource group: $RG"
+          az group delete --name "$RG" --yes --no-wait
