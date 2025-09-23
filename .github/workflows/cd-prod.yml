@@ -93,9 +93,9 @@ jobs:
 
       - name: Inject backend IPs into frontend
         run: |
-          sed -i "s|const PRODUCT_API_BASE_URL = ''|const PRODUCT_API_BASE_URL = 'http://${PRODUCT_IP}:8000'|g" frontend/main.js
-          sed -i "s|const ORDER_API_BASE_URL = ''|const ORDER_API_BASE_URL = 'http://${ORDER_IP}:8001'|g" frontend/main.js
-          sed -i "s|const CUSTOMER_API_BASE_URL = ''|const CUSTOMER_API_BASE_URL = 'http://${CUSTOMER_IP}:8002'|g" frontend/main.js
+          sed -i "s|const PRODUCT_API_BASE_URL *= *''|const PRODUCT_API_BASE_URL = 'http://${PRODUCT_IP}:8000'|g" frontend/main.js
+          sed -i "s|const ORDER_API_BASE_URL *= *''|const ORDER_API_BASE_URL = 'http://${ORDER_IP}:8001'|g" frontend/main.js
+          sed -i "s|const CUSTOMER_API_BASE_URL *= *''|const CUSTOMER_API_BASE_URL = 'http://${CUSTOMER_IP}:8002'|g" frontend/main.js
 
       - name: Deploy frontend (prod)
         env:
