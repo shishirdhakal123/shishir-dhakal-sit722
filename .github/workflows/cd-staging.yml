@@ -84,7 +84,7 @@ jobs:
       - name: Deploy backend services
         env:
           NAMESPACE: staging
-          ACR: ${{ secrets.SHARED_ACR_LOGIN_SERVER }}
+          ACR: ${{ secrets.AZURE_CONTAINER_REGISTRY }}
           TAG: testing-latest
         run: |
           for f in configmap.yaml product-db.yaml order-db.yaml customer-db.yaml \
@@ -131,7 +131,7 @@ jobs:
       - name: Deploy frontend
         env:
           NAMESPACE: staging
-          ACR: ${{ secrets.SHARED_ACR_LOGIN_SERVER }}
+          ACR: ${{ secrets.AZURE_CONTAINER_REGISTRY }}
           TAG: testing-latest
         run: |
           envsubst < k8s/frontend.yaml | kubectl apply -f -
