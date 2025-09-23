@@ -6,8 +6,6 @@ on:
     types:
       - completed
 
-  workflow_dispatch:
-
 jobs:
   deploy-staging:
     runs-on: ubuntu-22.04
