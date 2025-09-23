@@ -34,13 +34,20 @@ jobs:
           IMAGE_NAME=${{ secrets.AZURE_CONTAINER_REGISTRY }}/${{ inputs.image_name }}
           echo "Building $IMAGE_NAME"
 
-          # Tag with commit SHA and testing-latest
+          # Decide tag based on branch
+          if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
+            LATEST_TAG=prod-latest
+          else
+            LATEST_TAG=testing-latest
+          fi
+
+          # Build with commit SHA and branch-specific latest tag
           docker build -t $IMAGE_NAME:${{ github.sha }} ${{ inputs.service_path }}
-          docker build -t $IMAGE_NAME:testing-latest ${{ inputs.service_path }}
+          docker build -t $IMAGE_NAME:$LATEST_TAG ${{ inputs.service_path }}
 
           # Push both tags
           docker push $IMAGE_NAME:${{ github.sha }}
-          docker push $IMAGE_NAME:testing-latest
+          docker push $IMAGE_NAME:$LATEST_TAG
 
       - name: Azure Logout
         if: always()
