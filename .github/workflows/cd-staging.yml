@@ -39,6 +39,7 @@ jobs:
             -var "project=sit722" \
             -var "env=staging" \
             -var "shared_acr_name=${{ secrets.SHARED_ACR_NAME }}" \
+            -var "shared_acr_rg=${{ secrets.SHARED_ACR_RG }}" \
             -out tf.plan
           tofu apply -auto-approve tf.plan
 

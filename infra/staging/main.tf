@@ -39,7 +39,7 @@ resource "azurerm_storage_account" "sa" {
   location                 = azurerm_resource_group.rg.location
   account_tier             = "Standard"
   account_replication_type = "LRS"
-  allow_blob_public_access = false
+  public_network_access_enabled = true
 }
 
 resource "azurerm_storage_container" "container" {
@@ -51,6 +51,7 @@ resource "azurerm_storage_container" "container" {
 # Lookup your existing ACR by name
 data "azurerm_container_registry" "acr" {
   name = var.shared_acr_name
+  resource_group_name = var.shared_acr_rg
 }
 
 # Let AKS pull images from ACR
