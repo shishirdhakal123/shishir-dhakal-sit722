@@ -2,6 +2,12 @@ variable "subscription_id" {
   type = string
 }
 
+variable "prefix" {
+  description = "Prefix for all resource names"
+  type        = string
+  default     = "sit722-staging-shishir"
+}
+
 variable "location" {
   type    = string
   default = "australiaeast"
