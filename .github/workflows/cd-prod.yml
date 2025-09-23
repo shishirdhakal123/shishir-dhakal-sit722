@@ -80,8 +80,11 @@ jobs:
           docker push ${{ secrets.AZURE_CONTAINER_REGISTRY }}/frontend:prod-latest
 
       - name: Deploy frontend (prod)
+        env:
+          NAMESPACE: prod
+          ACR: ${{ secrets.AZURE_CONTAINER_REGISTRY }}
+          AG: prod-latest
         run: |
-          kubectl set image deployment/frontend frontend=${{ secrets.AZURE_CONTAINER_REGISTRY }}/frontend:prod-latest -n prod || \
           envsubst < k8s/frontend.yaml | kubectl apply -f -
 
       - name: Wait for frontend
