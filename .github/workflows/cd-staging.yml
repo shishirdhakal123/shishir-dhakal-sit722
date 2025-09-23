@@ -118,6 +118,11 @@ jobs:
       - name: Get service IPs
         id: ips
         run: |
+          for svc in product-service order-service customer-service; do
+            echo "Waiting for external IP for $svc..."
+            kubectl -n staging wait --for=jsonpath='{.status.loadBalancer.ingress[0].ip}' svc/$svc --timeout=300s
+          done
+
           echo "PRODUCT_IP=$(kubectl -n staging get svc product-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')" >> $GITHUB_ENV
           echo "ORDER_IP=$(kubectl -n staging get svc order-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')" >> $GITHUB_ENV
           echo "CUSTOMER_IP=$(kubectl -n staging get svc customer-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')" >> $GITHUB_ENV
