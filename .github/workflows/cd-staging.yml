@@ -146,13 +146,15 @@ jobs:
 
       - name: Acceptance tests
         run: |
-          # Test backend APIs
-          for ip in $PRODUCT_IP $ORDER_IP $CUSTOMER_IP; do
-            echo "Testing $ip..."
-            curl -s "http://$ip:8000/" | grep "Welcome"
-          done
+          echo "Testing Product Service..."
+          curl -s "http://$PRODUCT_IP:8000/" | grep "Welcome"
 
-          # Test frontend serves HTML
+          echo "Testing Order Service..."
+          curl -s "http://$ORDER_IP:8001/" | grep "Welcome"
+
+          echo "Testing Customer Service..."
+          curl -s "http://$CUSTOMER_IP:8002/" | grep "Welcome"
+
           FRONTEND_IP=$(kubectl -n staging get svc frontend -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
           echo "Testing frontend at $FRONTEND_IP..."
           curl -sf "http://$FRONTEND_IP/" | grep "<html"
