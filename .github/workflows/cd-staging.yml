@@ -116,12 +116,11 @@ jobs:
           sed -i "s|const ORDER_API_BASE_URL *= *''|const ORDER_API_BASE_URL = 'http://${ORDER_IP}:8001'|g" frontend/main.js
           sed -i "s|const CUSTOMER_API_BASE_URL *= *''|const CUSTOMER_API_BASE_URL = 'http://${CUSTOMER_IP}:8002'|g" frontend/main.js
 
-      - name: Build & push frontend image (staging)
-        uses: ./.github/workflows/build_and_push.yml
-        with:
-          service_path: ./frontend
-          image_name: frontend
-        secrets: inherit
+      - name: Build & Push frontend image (staging)
+        run: |
+          az acr login --name ${{ secrets.AZURE_CONTAINER_REGISTRY }}
+          docker build -t ${{ secrets.AZURE_CONTAINER_REGISTRY }}/frontend:testing-latest ./frontend
+          docker push ${{ secrets.AZURE_CONTAINER_REGISTRY }}/frontend:testing-latest
 
       - name: Deploy frontend (staging)
         run: |
