@@ -21,3 +21,7 @@ variable "env" {
 variable "shared_acr_name" {
   type = string
 }
+
+variable "shared_acr_rg" {
+  type = string
+}
