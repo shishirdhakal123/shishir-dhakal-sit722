@@ -1,0 +1,141 @@
+name: CD - Staging Deployment
+
+on:
+  workflow_run:
+    workflows: ["name: CI - Test, Build & Push (Backend + Frontend)"]
+    types:
+      - completed
+  workflow_dispatch:
+
+jobs:
+  deploy-staging:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS_PROD }}
+
+      - name: Set up OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: "1.7.0"
+
+      - name: Terraform apply (create staging infra)
+        working-directory: infra/staging
+        run: |
+          tofu init
+          tofu plan \
+            -var "subscription_id=${{ secrets.AZURE_SUBSCRIPTION_ID }}" \
+            -var "location=australiaeast" \
+            -var "project=sit722" \
+            -var "env=staging" \
+            -var "shared_acr_name=${{ secrets.SHARED_ACR_NAME }}" \
+            -out tf.plan
+          tofu apply -auto-approve tf.plan
+
+      - name: Capture Terraform outputs
+        id: tf
+        working-directory: infra/staging
+        run: |
+          echo "RG=$(tofu output -raw resource_group)" >> $GITHUB_ENV
+          echo "AKS=$(tofu output -raw aks_name)" >> $GITHUB_ENV
+          echo "STORAGE=$(tofu output -raw storage_account_name)" >> $GITHUB_ENV
+          echo "CONTAINER=$(tofu output -raw storage_container)" >> $GITHUB_ENV
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Get AKS credentials
+        run: az aks get-credentials -g "$RG" -n "$AKS" --overwrite-existing
+
+      - name: Create namespace
+        env:
+          NAMESPACE: staging
+        run: envsubst < k8s/namespace.yaml | kubectl apply -f -
+
+      - name: Apply Postgres secrets (staging)
+        run: kubectl apply -f k8s/secrets-staging.yaml -n staging
+
+      - name: Add Azure Storage secrets (staging)
+        run: |
+          STORAGE_ACCOUNT_NAME=$STORAGE
+          STORAGE_ACCOUNT_KEY=$(az storage account keys list \
+            -g "$RG" -n "$STORAGE_ACCOUNT_NAME" \
+            --query "[0].value" -o tsv)
+
+          kubectl create secret generic ecomm-secrets \
+            --namespace staging \
+            --from-literal=POSTGRES_USER=postgres \
+            --from-literal=POSTGRES_PASSWORD=postgres \
+            --from-literal=AZURE_STORAGE_ACCOUNT_NAME=$STORAGE_ACCOUNT_NAME \
+            --from-literal=AZURE_STORAGE_ACCOUNT_KEY=$STORAGE_ACCOUNT_KEY \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy backend services
+        env:
+          NAMESPACE: staging
+          ACR: ${{ secrets.SHARED_ACR_LOGIN_SERVER }}
+          TAG: testing-latest
+        run: |
+          for f in configmap.yaml product-db.yaml order-db.yaml customer-db.yaml \
+                   product-service.yaml order-service.yaml customer-service.yaml; do
+            envsubst < k8s/$f | kubectl apply -f -
+          done
+
+      - name: Wait for backends
+        run: |
+          kubectl -n staging rollout status deploy/product-service --timeout=180s
+          kubectl -n staging rollout status deploy/order-service --timeout=180s
+          kubectl -n staging rollout status deploy/customer-service --timeout=180s
+
+      - name: Get service IPs
+        id: ips
+        run: |
+          echo "PRODUCT_IP=$(kubectl -n staging get svc product-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')" >> $GITHUB_ENV
+          echo "ORDER_IP=$(kubectl -n staging get svc order-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')" >> $GITHUB_ENV
+          echo "CUSTOMER_IP=$(kubectl -n staging get svc customer-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')" >> $GITHUB_ENV
+
+      - name: Inject backend IPs into frontend
+        run: |
+          sed -i "s|_PRODUCT_API_URL_|http://${PRODUCT_IP}:8000|g" frontend/main.js
+          sed -i "s|_ORDER_API_URL_|http://${ORDER_IP}:8000|g" frontend/main.js
+          sed -i "s|_CUSTOMER_API_URL_|http://${CUSTOMER_IP}:8000|g" frontend/main.js
+
+      - name: Deploy frontend
+        env:
+          NAMESPACE: staging
+          ACR: ${{ secrets.SHARED_ACR_LOGIN_SERVER }}
+          TAG: testing-latest
+        run: |
+          envsubst < k8s/frontend.yaml | kubectl apply -f -
+
+      - name: Wait for frontend
+        run: kubectl -n staging rollout status deploy/frontend --timeout=180s
+
+      - name: Acceptance tests
+        run: |
+          for ip in $PRODUCT_IP $ORDER_IP $CUSTOMER_IP; do
+            echo "Testing $ip..."
+            curl -s "http://$ip:8000/" | grep "Welcome"
+          done
+          FRONTEND_IP=$(kubectl -n staging get svc frontend -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          curl -s "http://$FRONTEND_IP/" | grep "Welcome"
+
+      - name: Destroy staging infra
+        if: success()
+        working-directory: infra/staging
+        run: |
+          tofu destroy -auto-approve \
+            -var "subscription_id=${{ secrets.AZURE_SUBSCRIPTION_ID }}" \
+            -var "location=australiaeast" \
+            -var "project=sit722" \
+            -var "env=staging" \
+            -var "shared_acr_name=${{ secrets.SHARED_ACR_NAME }}"
