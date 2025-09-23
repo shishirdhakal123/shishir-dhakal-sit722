@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: ${ACR}/frontend:${TAG}
+          image: "${ACR}/frontend:${TAG}"
           imagePullPolicy: Always
           ports:
             - containerPort: 80
