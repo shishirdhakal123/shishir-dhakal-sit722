@@ -5,7 +5,7 @@ variable "subscription_id" {
 variable "prefix" {
   description = "Prefix for all resource names"
   type        = string
-  default     = "sit722-staging-shishir"
+  default     = "sit722-staging-sd"
 }
 
 variable "location" {
