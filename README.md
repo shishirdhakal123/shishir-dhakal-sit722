@@ -1,3 +1,3 @@
 # shishir-dhakal-sit722
 
-Trigger CD/CI Check Test
+Trigger CD/CI Check Trigger
