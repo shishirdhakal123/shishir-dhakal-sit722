@@ -1,0 +1,102 @@
+name: CD - Production Deployment
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    branches: ["main"]
+    types:
+      - completed
+  workflow_dispatch:
+
+jobs:
+  deploy-prod:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS_PROD }}
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Get AKS credentials (prod)
+        run: az aks get-credentials -g "${{ secrets.PROD_RG }}" -n "${{ secrets.PROD_AKS }}" --overwrite-existing
+
+      - name: Create namespace (prod)
+        env:
+          NAMESPACE: prod
+        run: envsubst < k8s/namespace.yaml | kubectl apply -f -
+
+      - name: Apply Postgres and Srorage secrets (prod)
+        run: kubectl apply -f k8s/secrets-prod.yaml -n prod
+
+      - name: Deploy backend services (prod)
+        env:
+          NAMESPACE: prod
+          ACR: ${{ secrets.AZURE_CONTAINER_REGISTRY }}
+          TAG: prod-latest
+        run: |
+          for f in configmap.yaml product-db.yaml order-db.yaml customer-db.yaml \
+                   product-service.yaml order-service.yaml customer-service.yaml; do
+            envsubst < k8s/$f | kubectl apply -f -
+          done
+
+      - name: Debug backend pods
+        run: |
+          kubectl -n prod get pods -o wide
+          kubectl -n prod describe pod -l app=product-service || true
+          kubectl -n prod describe pod -l app=order-service || true
+          kubectl -n prod describe pod -l app=customer-service || true
+
+      - name: Collect backend logs
+        run: |
+          for svc in product-service order-service customer-service; do
+            POD=$(kubectl -n prod get pod -l app=$svc -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+            if [ -n "$POD" ]; then
+              echo "===== Logs for $svc ($POD) ====="
+              kubectl -n prod logs $POD --tail=50 || true
+            fi
+          done
+
+      - name: Wait for backends
+        run: |
+          kubectl -n prod rollout status deploy/product-service --timeout=180s
+          kubectl -n prod rollout status deploy/order-service --timeout=180s
+          kubectl -n prod rollout status deploy/customer-service --timeout=180s
+
+      - name: Get service IPs
+        id: ips
+        run: |
+          for svc in product-service order-service customer-service; do
+            echo "Waiting for external IP for $svc..."
+            kubectl -n prod wait --for=jsonpath='{.status.loadBalancer.ingress[0].ip}' svc/$svc --timeout=300s
+          done
+
+          echo "PRODUCT_IP=$(kubectl -n prod get svc product-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')" >> $GITHUB_ENV
+          echo "ORDER_IP=$(kubectl -n prod get svc order-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')" >> $GITHUB_ENV
+          echo "CUSTOMER_IP=$(kubectl -n prod get svc customer-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')" >> $GITHUB_ENV
+
+      - name: Inject backend IPs into frontend
+        run: |
+          sed -i "s|_PRODUCT_API_URL_|http://${PRODUCT_IP}:8000|g" frontend/main.js
+          sed -i "s|_ORDER_API_URL_|http://${ORDER_IP}:8000|g" frontend/main.js
+          sed -i "s|_CUSTOMER_API_URL_|http://${CUSTOMER_IP}:8000|g" frontend/main.js
+
+      - name: Deploy frontend (prod)
+        env:
+          NAMESPACE: prod
+          ACR: ${{ secrets.AZURE_CONTAINER_REGISTRY }}
+          TAG: prod-latest
+        run: |
+          envsubst < k8s/frontend.yaml | kubectl apply -f -
+
+      - name: Wait for frontend
+        run: kubectl -n prod rollout status deploy/frontend --timeout=180s
