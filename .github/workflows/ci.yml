@@ -2,7 +2,7 @@ name: CI - Test, Build & Push (Backend + Frontend)
 
 on:
   push:
-    branches: ["testing"]
+    branches: ["testing", "main"]
   workflow_dispatch:
 
 concurrency:
