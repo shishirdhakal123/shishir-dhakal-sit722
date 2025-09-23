@@ -5,6 +5,8 @@ on:
     workflows: ["CI - Test, Build & Push (Backend + Frontend)"]
     types:
       - completed
+    branches:
+      - testing
   workflow_dispatch:
 
 jobs:
