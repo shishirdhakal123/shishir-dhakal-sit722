@@ -35,7 +35,7 @@ jobs:
           NAMESPACE: prod
         run: envsubst < k8s/namespace.yaml | kubectl apply -f -
 
-      - name: Apply Postgres and Srorage secrets (prod)
+      - name: Apply Postgres and Storage secrets (prod)
         run: kubectl apply -f k8s/secrets-prod.yaml -n prod
 
       - name: Deploy backend services (prod)
@@ -47,30 +47,6 @@ jobs:
           for f in configmap.yaml product-db.yaml order-db.yaml customer-db.yaml \
                    product-service.yaml order-service.yaml customer-service.yaml; do
             envsubst < k8s/$f | kubectl apply -f -
-          done
-
-      - name: Force rollout restart (prod)
-        run: |
-          kubectl -n prod rollout restart deploy/product-service
-          kubectl -n prod rollout restart deploy/order-service
-          kubectl -n prod rollout restart deploy/customer-service
-          kubectl -n prod rollout restart deploy/frontend
-
-      - name: Debug backend pods
-        run: |
-          kubectl -n prod get pods -o wide
-          kubectl -n prod describe pod -l app=product-service || true
-          kubectl -n prod describe pod -l app=order-service || true
-          kubectl -n prod describe pod -l app=customer-service || true
-
-      - name: Collect backend logs
-        run: |
-          for svc in product-service order-service customer-service; do
-            POD=$(kubectl -n prod get pod -l app=$svc -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
-            if [ -n "$POD" ]; then
-              echo "===== Logs for $svc ($POD) ====="
-              kubectl -n prod logs $POD --tail=50 || true
-            fi
           done
 
       - name: Wait for backends
@@ -97,13 +73,15 @@ jobs:
           sed -i "s|const ORDER_API_BASE_URL *= *''|const ORDER_API_BASE_URL = 'http://${ORDER_IP}:8001'|g" frontend/main.js
           sed -i "s|const CUSTOMER_API_BASE_URL *= *''|const CUSTOMER_API_BASE_URL = 'http://${CUSTOMER_IP}:8002'|g" frontend/main.js
 
-      - name: Deploy frontend (prod)
-        env:
-          NAMESPACE: prod
-          ACR: ${{ secrets.AZURE_CONTAINER_REGISTRY }}
-          TAG: prod-latest
+      - name: Build & Push frontend (prod)
         run: |
-          envsubst < k8s/frontend.yaml | kubectl apply -f -
+          az acr login --name ${{ secrets.AZURE_CONTAINER_REGISTRY }}
+          docker build -t ${{ secrets.AZURE_CONTAINER_REGISTRY }}/frontend:${{ github.sha }} ./frontend
+          docker push ${{ secrets.AZURE_CONTAINER_REGISTRY }}/frontend:${{ github.sha }}
+
+      - name: Deploy frontend (prod)
+        run: |
+          kubectl set image deployment/frontend frontend=${{ secrets.AZURE_CONTAINER_REGISTRY }}/frontend:${{ github.sha }} -n prod
 
       - name: Wait for frontend
         run: kubectl -n prod rollout status deploy/frontend --timeout=180s
