@@ -146,12 +146,16 @@ jobs:
 
       - name: Acceptance tests
         run: |
+          # Test backend APIs
           for ip in $PRODUCT_IP $ORDER_IP $CUSTOMER_IP; do
             echo "Testing $ip..."
             curl -s "http://$ip:8000/" | grep "Welcome"
           done
+
+          # Test frontend serves HTML
           FRONTEND_IP=$(kubectl -n staging get svc frontend -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-          curl -s "http://$FRONTEND_IP/" | grep "Welcome"
+          echo "Testing frontend at $FRONTEND_IP..."
+          curl -sf "http://$FRONTEND_IP/" | grep "<html"
 
       - name: Destroy staging infra
         if: success()
