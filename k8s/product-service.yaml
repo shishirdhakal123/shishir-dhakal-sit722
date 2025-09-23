@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: product-service
+  namespace: ${NAMESPACE}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: product-service
+  template:
+    metadata:
+      labels:
+        app: product-service
+    spec:
+      containers:
+        - name: product-service
+          image: ${ACR}/product_service:${TAG}
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          env:
+            - name: POSTGRES_HOST
+              value: product-db-service
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: ecomm-config
+                  key: PRODUCTS_DB_NAME
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: ecomm-secrets
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ecomm-secrets
+                  key: POSTGRES_PASSWORD
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: product-service
+  namespace: ${NAMESPACE}
+spec:
+  selector:
+    app: product-service
+  ports:
+    - port: 8000
+      targetPort: 8000
+  type: LoadBalancer
