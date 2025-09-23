@@ -1,22 +1,23 @@
-variable "subscription_id" { 
-    type = string 
-    }
+variable "subscription_id" {
+  type = string
+}
 
 variable "location" {
-     type = string  
-     default = "australiaeast" 
-     }
+  type    = string
+  default = "australiaeast"
+}
 
-variable "project" { 
-    type = string  
-    default = "sit722" 
-    }
+variable "project" {
+  type    = string
+  default = "sit722"
+}
 
-variable "env" { 
-    type = string  
-    default = "staging" 
-    }
+variable "env" {
+  type    = string
+  default = "staging"
+}
 
+# Existing ACR (permanent)
 variable "shared_acr_name" {
-    type = string 
-    }  # existing ACR (permanent)
+  type = string
+}
