@@ -92,6 +92,23 @@ jobs:
             envsubst < k8s/$f | kubectl apply -f -
           done
 
+      - name: Debug backend pods
+        run: |
+          kubectl -n staging get pods -o wide
+          kubectl -n staging describe pod -l app=product-service || true
+          kubectl -n staging describe pod -l app=order-service || true
+          kubectl -n staging describe pod -l app=customer-service || true
+
+      - name: Collect backend logs
+        run: |
+          for svc in product-service order-service customer-service; do
+            POD=$(kubectl -n staging get pod -l app=$svc -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+            if [ -n "$POD" ]; then
+              echo "===== Logs for $svc ($POD) ====="
+              kubectl -n staging logs $POD --tail=50 || true
+            fi
+          done
+
       - name: Wait for backends
         run: |
           kubectl -n staging rollout status deploy/product-service --timeout=180s
