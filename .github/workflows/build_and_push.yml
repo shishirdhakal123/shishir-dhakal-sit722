@@ -1,0 +1,47 @@
+name: Reusable Build & Push
+
+on:
+  workflow_call:
+    inputs:
+      service_path:
+        required: true
+        type: string
+      image_name:
+        required: true
+        type: string
+
+jobs:
+  build_and_push:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS_PROD }}
+
+      - name: Login to ACR
+        run: az acr login --name ${{ secrets.AZURE_CONTAINER_REGISTRY }}
+
+      - name: Build & Push image
+        run: |
+          IMAGE_NAME=${{ secrets.AZURE_CONTAINER_REGISTRY }}/${{ inputs.image_name }}
+          echo "Building $IMAGE_NAME"
+
+          # Tag with commit SHA and testing-latest
+          docker build -t $IMAGE_NAME:${{ github.sha }} ${{ inputs.service_path }}
+          docker build -t $IMAGE_NAME:testing-latest ${{ inputs.service_path }}
+
+          # Push both tags
+          docker push $IMAGE_NAME:${{ github.sha }}
+          docker push $IMAGE_NAME:testing-latest
+
+      - name: Azure Logout
+        if: always()
+        run: az logout

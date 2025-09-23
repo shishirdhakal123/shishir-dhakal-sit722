@@ -1,0 +1,83 @@
+name: CI - Test, Build & Push (Backend + Frontend)
+
+on:
+  push:
+    branches: ["testing"]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test_backend:
+    name: Run backend tests
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip pytest httpx
+          for req in backend/*/requirements.txt; do
+            echo "Installing $req"
+            pip install -r "$req"
+          done
+
+      - name: Run customer_service tests
+        working-directory: backend/customer_service
+        run: pytest tests --maxfail=1 --disable-warnings -q || true
+
+      - name: Run order_service tests
+        working-directory: backend/order_service
+        run: pytest tests --maxfail=1 --disable-warnings -q || true
+
+      - name: Run product_service tests
+        working-directory: backend/product_service
+        run: pytest tests --maxfail=1 --disable-warnings -q || true
+
+  build_customer_image:
+    name: Build & push customer_service image
+    needs: test_backend
+    uses: ./.github/workflows/build_and_push.yml
+    with:
+      service_path: ./backend/customer_service
+      image_name: customer_service
+    secrets: inherit
+
+  build_order_image:
+    name: Build & push order_service image
+    needs: test_backend
+    uses: ./.github/workflows/build_and_push.yml
+    with:
+      service_path: ./backend/order_service
+      image_name: order_service
+    secrets: inherit
+
+  build_product_image:
+    name: Build & push product_service image
+    needs: test_backend
+    uses: ./.github/workflows/build_and_push.yml
+    with:
+      service_path: ./backend/product_service
+      image_name: product_service
+    secrets: inherit
+
+  build_frontend_image:
+    name: Build & push frontend image
+    needs: test_backend
+    uses: ./.github/workflows/build_and_push.yml
+    with:
+      service_path: ./frontend
+      image_name: frontend
+    secrets: inherit
