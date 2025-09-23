@@ -2,7 +2,7 @@ name: CD - Staging Deployment
 
 on:
   workflow_run:
-    workflows: [" CI - Test, Build & Push (Backend + Frontend)"]
+    workflows: ["CI - Test, Build & Push (Backend + Frontend)"]
     types:
       - completed
   workflow_dispatch:
