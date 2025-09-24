@@ -9,3 +9,8 @@ data:
   CUSTOMERS_DB_NAME: customers
   STORAGE_CONTAINER_NAME: sit722prodcontainer
   SAS_TOKEN_EXPIRY_HOURS: "24"
+
+  # Internal service-to-service URLs
+  PRODUCT_SERVICE_URL: http://product-service:8000
+  ORDER_SERVICE_URL: http://order-service:8001
+  CUSTOMER_SERVICE_URL: http://customer-service:8002
