@@ -83,7 +83,7 @@ jobs:
         env:
           NAMESPACE: prod
           ACR: ${{ secrets.AZURE_CONTAINER_REGISTRY }}
-          AG: prod-latest
+          TAG: prod-latest
         run: |
           envsubst < k8s/frontend.yaml | kubectl apply -f -
 
