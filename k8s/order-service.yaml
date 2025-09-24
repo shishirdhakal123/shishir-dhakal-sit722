@@ -37,6 +37,17 @@ spec:
                 secretKeyRef:
                   name: ecomm-secrets
                   key: POSTGRES_PASSWORD
+
+            - name: PRODUCT_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: ecomm-config
+                  key: PRODUCT_SERVICE_URL
+            - name: CUSTOMER_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: ecomm-config
+                  key: CUSTOMER_SERVICE_URL
 ---
 apiVersion: v1
 kind: Service
