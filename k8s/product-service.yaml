@@ -37,6 +37,26 @@ spec:
                 secretKeyRef:
                   name: ecomm-secrets
                   key: POSTGRES_PASSWORD
+            - name: AZURE_STORAGE_ACCOUNT_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: ecomm-secrets # Secret name matches
+                  key: AZURE_STORAGE_ACCOUNT_NAME
+            - name: AZURE_STORAGE_ACCOUNT_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ecomm-secrets # Secret name matches
+                  key: AZURE_STORAGE_ACCOUNT_KEY
+            - name: AZURE_STORAGE_CONTAINER_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: ecomm-config # ConfigMap name matches
+                  key: STORAGE_CONTAINER_NAME
+            - name: AZURE_SAS_TOKEN_EXPIRY_HOURS
+              valueFrom:
+                configMapKeyRef:
+                  name: ecomm-config # ConfigMap name matches
+                  key: SAS_TOKEN_EXPIRY_HOURS
 ---
 apiVersion: v1
 kind: Service
