@@ -119,7 +119,7 @@ jobs:
       - name: Build & Push frontend image (staging)
         run: |
           az acr login --name ${{ secrets.AZURE_CONTAINER_REGISTRY }}
-          docker build -t ${{ secrets.AZURE_CONTAINER_REGISTRY }}/frontend:testing-latest ./frontend
+          docker build --no-cache -t ${{ secrets.AZURE_CONTAINER_REGISTRY }}/frontend:testing-latest ./frontend
           docker push ${{ secrets.AZURE_CONTAINER_REGISTRY }}/frontend:testing-latest
 
       - name: Deploy frontend (staging)
