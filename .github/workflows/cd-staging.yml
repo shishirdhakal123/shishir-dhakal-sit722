@@ -130,6 +130,9 @@ jobs:
         run: |
           envsubst < k8s/frontend.yaml | kubectl apply -f -
 
+      - name: Force refresh frontend
+        run: kubectl -n staging rollout restart deployment/frontend
+
       - name: Wait for frontend
         run: kubectl -n staging rollout status deploy/frontend --timeout=180s
 
