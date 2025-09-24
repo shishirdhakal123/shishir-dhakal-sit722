@@ -126,7 +126,7 @@ jobs:
         env:
           NAMESPACE: staging
           ACR: ${{ secrets.AZURE_CONTAINER_REGISTRY }}
-          AG: testing-latest
+          TAG: testing-latest
         run: |
           envsubst < k8s/frontend.yaml | kubectl apply -f -
 
