@@ -7,5 +7,5 @@ data:
   PRODUCTS_DB_NAME: products
   ORDERS_DB_NAME: orders
   CUSTOMERS_DB_NAME: customers
-  STORAGE_CONTAINER_NAME: product-images
+  STORAGE_CONTAINER_NAME: sit722prodcontainer
   SAS_TOKEN_EXPIRY_HOURS: "24"
